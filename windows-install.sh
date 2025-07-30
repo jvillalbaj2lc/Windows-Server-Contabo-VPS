@@ -1,53 +1,51 @@
 #!/bin/bash
 
-apt update -y && apt upgrade -y
+# Detect disk
+if ls /dev/nvme0n1 >/dev/null 2>&1; then
+  disk="/dev/nvme0n1"
+  part1="/dev/nvme0n1p1"
+  part2="/dev/nvme0n1p2"
+else
+  disk="/dev/sda"
+  part1="/dev/sda1"
+  part2="/dev/sda2"
+fi
 
+apt update -y && apt upgrade -y
 apt install grub2 wimtools ntfs-3g -y
 
-#Get the disk size in GB and convert to MB
-disk_size_gb=$(parted /dev/sda --script print | awk '/^Disk \/dev\/sda:/ {print int($3)}')
+disk_size_gb=$(parted $disk --script print | awk "/^Disk ${disk}:/ {print int(\$3)}")
 disk_size_mb=$((disk_size_gb * 1024))
-
-#Calculate partition size (25% of total size)
 part_size_mb=$((disk_size_mb / 4))
 
-#Create GPT partition table
-parted /dev/sda --script -- mklabel gpt
+# Create partitions
+parted $disk --script -- mklabel gpt
+parted $disk --script -- mkpart primary ntfs 1MB ${part_size_mb}MB
+parted $disk --script -- mkpart primary ntfs ${part_size_mb}MB $((2 * part_size_mb))MB
 
-#Create two partitions
-parted /dev/sda --script -- mkpart primary ntfs 1MB ${part_size_mb}MB
-parted /dev/sda --script -- mkpart primary ntfs ${part_size_mb}MB $((2 * part_size_mb))MB
-
-#Inform kernel of partition table changes
-partprobe /dev/sda
-
+partprobe $disk
+sleep 30
+partprobe $disk
+sleep 30
+partprobe $disk
 sleep 30
 
-partprobe /dev/sda
-
-sleep 30
-
-partprobe /dev/sda
-
-sleep 30 
-
-#Format the partitions
-mkfs.ntfs -f /dev/sda1
-mkfs.ntfs -f /dev/sda2
+# Format partitions
+mkfs.ntfs -f $part1
+mkfs.ntfs -f $part2
 
 echo "NTFS partitions created"
 
-echo -e "r\ng\np\nw\nY\n" | gdisk /dev/sda
+echo -e "r\ng\np\nw\nY\n" | gdisk $disk
 
-mount /dev/sda1 /mnt
+mount $part1 /mnt
 
-#Prepare directory for the Windows disk
+# Prepare directory for Windows disk
 cd ~
 mkdir windisk
+mount $part2 windisk
 
-mount /dev/sda2 windisk
-
-grub-install --root-directory=/mnt /dev/sda
+grub-install --root-directory=/mnt $disk
 
 #Edit GRUB configuration
 cd /mnt/boot/grub
