@@ -16,7 +16,7 @@ EOF
 apt-get update -o Acquire::Check-Valid-Until=false
 
 # 🧱 Instalar dependencias
-apt update -y && apt upgrade -y
+# apt update -y && apt upgrade -y
 apt install grub2 wimtools ntfs-3g rsync wget -y
 
 # 💾 Usar un valor seguro de 75GB (en MB)
