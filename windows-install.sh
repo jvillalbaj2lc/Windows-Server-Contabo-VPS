@@ -7,6 +7,14 @@ echo "💣 Limpiando disco /dev/sda..."
 sgdisk --zap-all /dev/sda
 wipefs -a /dev/sda
 
+echo "⚙️ Configurando repositorios de archive.debian.org para Buster..."
+cat >/etc/apt/sources.list <<EOF
+deb http://archive.debian.org/debian buster main contrib non-free
+deb http://archive.debian.org/debian-security buster/updates main contrib non-free
+EOF
+
+apt-get update -o Acquire::Check-Valid-Until=false
+
 # 🧱 Instalar dependencias
 apt update -y && apt upgrade -y
 apt install grub2 wimtools ntfs-3g rsync wget -y
